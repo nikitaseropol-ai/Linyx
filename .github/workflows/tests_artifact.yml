@@ -1,0 +1,45 @@
+name: Run tests & upload artifact
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout current repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Pull builder image
+      run: docker pull vlashex/kubsh-builder:latest
+
+    - name: Build, install and test (using same container as locally)
+      run: |
+        docker run --rm --privileged \
+        -v "$PWD:/mnt" \
+        vlashex/kubsh-builder:latest
+
+
+    - name: Verify kubsh.deb exists
+      run: |
+        if [ ! -f "kubsh.deb" ]; then
+          echo "❌ kubsh.deb not found!"
+          ls -la
+          exit 1
+        fi
+        echo "✅ kubsh.deb found"
+        ls -la kubsh.deb
+
+    - name: Upload kubsh.deb artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: kubsh-package
+        path: kubsh.deb
+        retention-days: 30
